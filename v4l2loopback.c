@@ -750,7 +750,7 @@ static int vidioc_querycap(struct file *file, void *priv,
 			->device_nr;
 	__u32 capabilities = V4L2_CAP_STREAMING | V4L2_CAP_READWRITE;
 
-	strlcpy(cap->driver, "v4l2 loopback", sizeof(cap->driver));
+	strncpy(cap->driver, "v4l2 loopback", sizeof(cap->driver));
 	snprintf(cap->card, labellen, dev->card_label);
 	snprintf(cap->bus_info, sizeof(cap->bus_info),
 		 "platform:v4l2loopback-%03d", device_nr);
@@ -1352,7 +1352,7 @@ static int vidioc_enum_output(struct file *file, void *fh,
 	memset(outp, 0, sizeof(*outp));
 
 	outp->index = index;
-	strlcpy(outp->name, "loopback in", sizeof(outp->name));
+	strncpy(outp->name, "loopback in", sizeof(outp->name));
 	outp->type = V4L2_OUTPUT_TYPE_ANALOG;
 	outp->audioset = 0;
 	outp->modulator = 0;
@@ -1411,7 +1411,7 @@ static int vidioc_enum_input(struct file *file, void *fh,
 	memset(inp, 0, sizeof(*inp));
 
 	inp->index = index;
-	strlcpy(inp->name, "loopback", sizeof(inp->name));
+	strncpy(inp->name, "loopback", sizeof(inp->name));
 	inp->type = V4L2_INPUT_TYPE_CAMERA;
 	inp->audioset = 0;
 	inp->tuner = 0;
@@ -1576,8 +1576,8 @@ static int vidioc_querybuf(struct file *file, void *fh, struct v4l2_buffer *b)
 static void buffer_written(struct v4l2_loopback_device *dev,
 			   struct v4l2l_buffer *buf)
 {
-	del_timer_sync(&dev->sustain_timer);
-	del_timer_sync(&dev->timeout_timer);
+	timer_delete_sync(&dev->sustain_timer);
+	timer_delete_sync(&dev->timeout_timer);
 	spin_lock_bh(&dev->lock);
 
 	dev->bufpos2index[dev->write_position % dev->used_buffers] =
@@ -2030,8 +2030,8 @@ static int v4l2_loopback_close(struct file *file)
 
 	atomic_dec(&dev->open_count);
 	if (dev->open_count.counter == 0) {
-		del_timer_sync(&dev->sustain_timer);
-		del_timer_sync(&dev->timeout_timer);
+		timer_delete_sync(&dev->sustain_timer);
+		timer_delete_sync(&dev->timeout_timer);
 	}
 	try_free_buffers(dev);
 
@@ -2877,15 +2877,22 @@ static void v4l2loopback_cleanup_module(void)
 MODULE_ALIAS_MISCDEV(MISC_DYNAMIC_MINOR);
 MODULE_ALIAS("devname:v4l2loopback");
 
+//#ifdef MODULE
+//int __init init_module(void)
+//{
+//	return v4l2loopback_init_module();
+//}
+//void __exit cleanup_module(void)
+//{
+//	return v4l2loopback_cleanup_module();
+//}
+//#else
+//late_initcall(v4l2loopback_init_module);
+//#endif
+
 #ifdef MODULE
-int __init init_module(void)
-{
-	return v4l2loopback_init_module();
-}
-void __exit cleanup_module(void)
-{
-	return v4l2loopback_cleanup_module();
-}
+module_init(v4l2loopback_init_module);
+module_exit(v4l2loopback_cleanup_module);
 #else
 late_initcall(v4l2loopback_init_module);
 #endif
